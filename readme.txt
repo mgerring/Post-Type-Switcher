@@ -1,5 +1,5 @@
 === Post Type Switcher ===
-Contributors: johnjamesjacoby
+Contributors: johnjamesjacoby, beatpanda
 Tags: post type
 Requires at least: 3.0
 Tested up to: 3.5
