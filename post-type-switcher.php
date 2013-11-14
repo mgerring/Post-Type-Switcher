@@ -139,6 +139,9 @@ final class Post_Type_Switcher {
 	 * @since PostTypeSwitcher (1.2)
 	 */
 	public function quickedit( $column_name, $post_type ) {
+		if ( did_action( 'quick_edit_custom_box' ) !== 1 ) {
+			return;
+		}
 	?>
 		<fieldset class="inline-edit-col-right">
 			<div class="inline-edit-col">
