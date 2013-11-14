@@ -13,7 +13,7 @@
  * Plugin Name: Post Type Switcher
  * Plugin URI:  http://wordpress.org/extend/post-type-switcher/
  * Description: Allow switching of a post type while editing a post (in post publish section)
- * Version:     1.1.2
+ * Version:     1.2
  * Author:      johnjamesjacoby
  * Author URI:  http://johnjamesjacoby.com
  */
@@ -38,16 +38,18 @@ final class Post_Type_Switcher {
 		if ( ! $this->is_allowed_page() )
 			return;
 
-		add_action( 'post_submitbox_misc_actions',	array( $this, 'metabox'    	)         		);
-		add_action( 'manage_posts_columns',			array( $this, 'add_column'	)				);
-		add_action( 'manage_pages_columns',			array( $this, 'add_column'	)				);
-		add_action( 'manage_posts_custom_column', 	array( $this, 'manage_column'), 	10,  2 	);
-		add_action( 'manage_pages_custom_column', 	array( $this, 'manage_column'), 	10,  2 	);
-		add_action( 'quick_edit_custom_box',		array( $this, 'quickedit'	), 		10,	 2	);
-		add_action( 'bulk_edit_custom_box',			array( $this, 'quickedit'	), 		10,	 2	);
-		add_action(	'admin_enqueue_scripts',		array( $this, 'quickedit_script'),	10,	 1	);
-		add_action( 'save_post',                  	array( $this, 'save_post'  	), 		999, 2 	); // Late priority for plugin friendliness
-		add_action( 'admin_head',                 	array( $this, 'admin_head' 	)         		);
+		// @todo Remove this; since it's janky to need to do this.
+		add_action( 'manage_posts_columns',        array( $this, 'add_column'       )         );
+		add_action( 'manage_pages_columns',        array( $this, 'add_column'       )         );
+		add_action( 'manage_posts_custom_column',  array( $this, 'manage_column'    ), 10,  2 );
+		add_action( 'manage_pages_custom_column',  array( $this, 'manage_column'    ), 10,  2 );
+
+		add_action( 'post_submitbox_misc_actions', array( $this, 'metabox'          )         );
+		add_action( 'quick_edit_custom_box',       array( $this, 'quickedit'        ), 10,  2 );
+		add_action( 'bulk_edit_custom_box',        array( $this, 'quickedit'        ), 10,  2 );
+		add_action(	'admin_enqueue_scripts',       array( $this, 'quickedit_script' ), 10,  1 );
+		add_action( 'save_post',                   array( $this, 'save_post'        ), 999, 2 ); // Late priority for plugin friendliness
+		add_action( 'admin_head',                  array( $this, 'admin_head'       )         );
 	}
 
 	/**
@@ -104,76 +106,79 @@ final class Post_Type_Switcher {
 
 	<?php
 	}
+
 	/**
-	 * add_column()
+	 * Adds the post type column
 	 *
-	 * Adds the post type column, only because there is no
-	 * other way for WordPress to add buttons to quickedit. Oh well.
-	 * Reccomended for removal ASAP.
-	 *
-	 * @since PostTypeSwitcher (1.1.1)
+	 * @since PostTypeSwitcher (1.2)
 	 */
-	public function add_column($columns) {
-		return array_merge( $columns, 
-		              array('post_type' => __('Post Type')) );
+	public function add_column( $columns ) {
+		return array_merge( $columns,  array( 'post_type' => __( 'Type' ) ) );
 	}
+
 	/**
-	 * manage_column()
-	 *
-	 * Manages the post type column, only because there is no
-	 * other way for WordPress to add buttons to quickedit. Oh well.
-	 * Reccomended for removal ASAP.
+	 * Manages the post type column
 	 *
 	 * @since PostTypeSwitcher (1.1.1)
 	 */
-	public function manage_column($column, $post_id) {
-		switch($column) {
-			case 'post_type':
-				$post_type = get_post_type_object(get_post_type($post_id));
-				echo '<span data-post-type="'.$post_type->name.'">'.$post_type->labels->singular_name.'</span>';
+	public function manage_column( $column, $post_id ) {
+		switch( $column ) {
+			case 'post_type' :
+				$post_type = get_post_type_object( get_post_type( $post_id ) ); ?>
+
+				<span data-post-type="<?php echo esc_attr( $post_type->name ); ?>"><?php echo esc_html( $post_type->labels->singular_name ); ?></span>
+
+				<?php
 				break;
 		}
 	}
-	
+
 	/**
-	 * quickedit()
-	 *
 	 * Adds quickedit button for bulk-editing post types
 	 *
-	 * @since PostTypeSwitcher (1.1.1)
+	 * @since PostTypeSwitcher (1.2)
 	 */
-	public function quickedit($column_name, $post_type) {
+	public function quickedit( $column_name, $post_type ) {
+		if ( did_action( 'quick_edit_custom_box' ) !== 1 ) {
+			return;
+		}
 	?>
 		<fieldset class="inline-edit-col-right">
-			<label class="alignleft">
-				<span class="title">Post type</span>
-				<?php wp_nonce_field( 'post-type-selector', 'pts-nonce-select' ); ?>
-				<?php $this->select_box(); ?>
-			</label>
+			<div class="inline-edit-col">
+				<label class="alignleft">
+					<span class="title"><?php _e( 'Post Type' ); ?></span>
+					<?php wp_nonce_field( 'post-type-selector', 'pts-nonce-select' ); ?>
+					<?php $this->select_box(); ?>
+				</label>
+			</div>
 		</fieldset>
 	<?php
 	}
-	
+
 	/**
-	 * quickedit_script()
+	 * Adds quickedit script for getting values into quickedit box
 	 *
-	 * Adds quickedit script for getting values into quickedit box.
-	 *
-	 * @since PostTypeSwitcher (1.1.1)
+	 * @since PostTypeSwitcher (1.2)
 	 */
-	public function quickedit_script($hook) {
-		if ($hook == 'edit.php') {
-			wp_enqueue_script('pts_quickedit', plugins_url('js/pts.quickedit.js', __FILE__), array('jquery'), '', true);
-		}
+	public function quickedit_script( $hook = '' ) {
+		if ( 'edit.php' != $hook )
+			return;
+
+		wp_enqueue_script( 'pts_quickedit', plugins_url( 'js/quickedit.js', __FILE__ ), array( 'jquery' ), '', true );
 	}
-	
-	public function select_box() { 
+
+	/**
+	 * Output a post-type dropdown
+	 *
+	 * @since PostTypeSwitcher (1.2)
+	 */
+	public function select_box() {
 		$args = (array) apply_filters( 'pts_post_type_filter', array(
 			'public'  => true,
 			'show_ui' => true
 		) );
-		$post_types = get_post_types( $args, 'objects' );
-?>
+		$post_types = get_post_types( $args, 'objects' ); ?>
+
 		<select name="pts_post_type" id="pts_post_type">
 
 			<?php foreach ( $post_types as $post_type => $pt ) : ?>
@@ -185,14 +190,16 @@ final class Post_Type_Switcher {
 			<?php endforeach; ?>
 
 		</select>
-<?	}
-	
+
+	<?php
+	}
+
 	/**
 	 * Set the post type on save_post but only when editing
 	 *
 	 * We do a bunch of sanity checks here, to make sure we're only changing the
 	 * post type when the user explicitly intends to.
-	 * 
+	 *
 	 * - Not during autosave
 	 * - Check nonce
 	 * - Check user capabilities
@@ -207,14 +214,15 @@ final class Post_Type_Switcher {
 	 * @return If any number of condtions are met
 	 */
 	function save_post( $post_id, $post ) {
-		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ){
-			die('autosave');
+
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+			die( 'autosave' );
 			return;
 		}
 
-		if ( ! isset( $_REQUEST['pts-nonce-select'] ) ) //This was changed from _POST because the bulk editor makes a GET request. (I know, WTF right??)
+		if ( ! isset( $_REQUEST['pts-nonce-select'] ) )
 			return;
-		
+
 		if ( ! wp_verify_nonce( $_REQUEST['pts-nonce-select'], 'post-type-selector' ) )
 			return;
 
@@ -227,13 +235,12 @@ final class Post_Type_Switcher {
 		if ( in_array( $post->post_type, array( $_REQUEST['pts_post_type'], 'revision' ) ) )
 			return;
 
-
 		if ( ! $new_post_type_object = get_post_type_object( $_REQUEST['pts_post_type'] ) )
-			return;		
+			return;
 
 		if ( ! current_user_can( $new_post_type_object->cap->publish_posts ) )
 			return;
-		
+
 		set_post_type( $post_id, $new_post_type_object->name );
 	}
 
